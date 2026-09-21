@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# PyCharm
+.idea/
+
+# EPANET temporary/generated files
+*.rpt
+*.out
+*.bak
+
+# Temporary files
+*_temp.*
+*.tmp
+
+# OS
+.DS_Store
+Thumbs.db
+
+_archive/

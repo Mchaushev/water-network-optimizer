@@ -1,0 +1,153 @@
+[TITLE]
+
+[JUNCTIONS]
+;;ID                             	Elev        	Demand      	Pattern                        
+ J1                             	95.0000     
+ J2                             	90.0000     
+ J3                             	88.0000     
+ J4                             	85.0000     
+ J5                             	82.0000     
+
+[RESERVOIRS]
+;;ID                             	Head        	Pattern                        
+ R1                             	130.0000      	RES_HEAD
+
+[TANKS]
+;;ID                             	Elevation   	InitLevel   	MinLevel    	MaxLevel    	Diameter    	MinVol      	VolCurve                       	Overflow    
+
+[PIPES]
+;;ID                             	Node1                          	Node2                          	Length      	Diameter    	Roughness   	MinorLoss   	Status
+ P1                             	R1                             	J1                             	300.0000    	160.0000    	100.0000    	0.0000      	      
+ P2                             	J1                             	J2                             	200.0000    	110.0000    	100.0000    	0.0000      	      
+ P3                             	J1                             	J3                             	250.0000    	110.0000    	100.0000    	0.0000      	      
+ P4                             	J1                             	J4                             	200.0000    	90.0000     	100.0000    	0.0000      	      
+ P5                             	J4                             	J5                             	150.0000    	90.0000     	100.0000    	0.0000      	      
+ P6                             	J2                             	J3                             	180.0000    	90.0000     	100.0000    	0.0000      	      
+
+[PUMPS]
+;;ID                             	Node1                          	Node2                          	Parameters  
+
+[VALVES]
+;;ID                             	Node1                          	Node2                          	Diameter    	Type  	Setting     	MinorLoss   
+
+[DEMANDS]
+;;Junction                       	Demand        	Pattern                        	Category                       
+ J1                             	5.000000      	                               
+ J2                             	3.000000      	                               
+ J3                             	4.000000      	                               
+ J4                             	4.000000      	                               
+ J5                             	3.000000      	                               
+
+[EMITTERS]
+;;Junction                       	Coefficient   
+
+[LEAKAGE]
+;;Pipe                           	Leak Area     	Leak Expansion
+
+[STATUS]
+;;ID                             	Status/Setting
+
+[PATTERNS]
+;;ID                             	Multipliers 
+ RES_HEAD                       	1.0000      
+
+[CURVES]
+;;ID                             	X-Value     	Y-Value     
+
+[CONTROLS]
+
+[RULES]
+
+[QUALITY]
+;;ID                             	InitQual      
+
+[SOURCES]
+;;ID                             	Type     	Quality       	Pattern                        
+
+[MIXING]
+;;ID                             	Model   
+
+[REACTIONS]
+ ORDER  BULK            1.00
+ ORDER  WALL            1
+ ORDER  TANK            1.00
+ GLOBAL BULK            0.000000
+ GLOBAL WALL            0.000000
+
+[REACTIONS]
+;Type     	Pipe/Tank                      	Coefficient 
+
+[ENERGY]
+ GLOBAL EFFIC        75.0000
+ DEMAND CHARGE       0.0000
+
+[TIMES]
+ DURATION            0:00:00
+ HYDRAULIC TIMESTEP  1:00:00
+ QUALITY TIMESTEP    0:06:00
+ REPORT TIMESTEP     1:00:00
+ REPORT START        0:00:00
+ PATTERN TIMESTEP    1:00:00
+ PATTERN START       0:00:00
+ RULE TIMESTEP       0:06:00
+ START CLOCKTIME     0:00:00
+ STATISTIC           NONE
+
+[OPTIONS]
+ UNITS               LPS
+ PRESSURE            METERS
+ HEADLOSS            H-W
+ UNBALANCED          STOP
+ QUALITY             NONE
+ DEMAND MULTIPLIER   1.0000
+ EMITTER EXPONENT    0.5000
+ BACKFLOW ALLOWED    YES
+ VISCOSITY           1.000000
+ DIFFUSIVITY         1.000000
+ SPECIFIC GRAVITY    1.000000
+ TRIALS              200
+ ACCURACY            0.00100000
+ TOLERANCE           0.01000000
+ CHECKFREQ           2
+ MAXCHECK            10
+ DAMPLIMIT           0.00000000
+
+[REPORT]
+ PAGESIZE            0
+ STATUS              NO
+ SUMMARY             YES
+ ENERGY              NO
+ MESSAGES            YES
+ NODES               NONE
+ LINKS               NONE
+ Elevation           NO
+ Demand              PRECISION 2
+ Head                PRECISION 2
+ Pressure            PRECISION 2
+ Quality             PRECISION 2
+ Length              NO
+ Diameter            NO
+ Flow                PRECISION 2
+ Velocity            PRECISION 2
+ Headloss            PRECISION 2
+ Quality             NO
+ State               NO
+ Setting             NO
+ Reaction            NO
+
+[TAGS]
+;;Object  	ID                             	Tag
+
+[COORDINATES]
+;;ID                             	X-Coord       	Y-Coord       
+ J1                             	100.000000    	0.000000      
+ J2                             	200.000000    	100.000000    
+ J3                             	300.000000    	0.000000      
+ J4                             	100.000000    	-100.000000   
+ J5                             	100.000000    	-200.000000   
+ R1                             	0.000000      	0.000000      
+
+[VERTICES]
+;;ID                             	X-Coord       	Y-Coord       
+
+[END]
