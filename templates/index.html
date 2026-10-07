@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Water Network Optimizer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+
+<header class="header">
+    <div class="container">
+        <h1>Water Network Optimizer</h1>
+        <p>EPANET + Optuna</p>
+    </div>
+</header>
+
+<main class="container">
+
+    <section class="card">
+        <h2>Water Network Optimization</h2>
+        <p>
+            Optimize water distribution network pipe diameters
+            using hydraulic constraints and Optuna.
+        </p>
+        <button class="primary-button">
+            Start New Optimization
+        </button>
+    </section>
+
+    <!-- Коригирана секция Current Network -->
+    <section class="card">
+        <h2>Current Network</h2>
+        <form action="/upload" method="POST" enctype="multipart/form-data">
+
+            <div class="form-group">
+
+                <label for="network_file">
+                    EPANET network (.inp)
+                </label>
+
+                <input
+                        type="file"
+                        id="network_file"
+                        name="network_file"
+                        accept=".inp"
+                        required
+                >
+
+            </div>
+
+
+            <button
+                    type="submit"
+                    class="primary-button"
+            >
+                Load Network
+            </button>
+
+        </form>
+
+        <div class="info-row">
+            <span>Network:</span>
+            {% if network_name %}
+
+            <div class="info-row">
+                <span>Network:</span>
+                <strong>{{ network_name }}</strong>
+            </div>
+
+            {% else %}
+
+            <div class="info-row">
+                <span>Network:</span>
+                <strong>No network loaded</strong>
+            </div>
+
+            {% endif %}
+        </div>
+        <div class="info-row">
+            <span>Optimization criteria:</span>
+            <strong>Default</strong>
+        </div>
+    </section>
+
+    <!-- Изнесена и правилно затворена секция Optimization Settings -->
+    <section class="card">
+        <h2>Optimization Settings</h2>
+        <form action="/optimize" method="POST">
+            <div class="form-group">
+                <label for="min_pressure">Minimum pressure (m)</label>
+                <input type="number" id="min_pressure" name="min_pressure" value="{{ criteria.min_pressure }}"
+                       step="0.1">
+            </div>
+
+            <div class="form-group">
+                <label for="max_pressure">Maximum pressure (m)</label>
+                <input type="number" id="max_pressure" name="max_pressure" value="{{ criteria.max_pressure }}"
+                       step="0.1">
+            </div>
+
+            <div class="form-group">
+                <label for="max_velocity">Maximum velocity (m/s)</label>
+                <input type="number" id="max_velocity" name="max_velocity" value="{{ criteria.max_velocity }}"
+                       step="0.1">
+            </div>
+
+            <div class="form-group">
+                <label for="trials">Optuna trials</label>
+                <input type="number" id="trials" name="trials" value="500" min="1" step="1">
+            </div>
+
+            <button type="submit" class="primary-button">Start Optimization</button>
+        </form>
+    </section>
+
+    <!-- Изнесена и правилно затворена секция Network Pipes -->
+    <section class="card">
+        <h2>Network Pipes</h2>
+        <table>
+            <thead>
+            <tr>
+                <th>Pipe</th>
+                <th>Diameter</th>
+                <th>Length</th>
+            </tr>
+            </thead>
+            <tbody>
+
+            {% if pipes %}
+
+            {% for pipe_id, pipe in pipes.items() %}
+
+            <tr>
+                <td>{{ pipe_id }}</td>
+                <td>DN{{ pipe.diameter }}</td>
+                <td>{{ "%.2f"|format(pipe.length) }} m</td>
+            </tr>
+
+            {% endfor %}
+
+            {% else %}
+
+            <tr>
+                <td colspan="3">
+                    No network loaded
+                </td>
+            </tr>
+
+            {% endif %}
+
+            </tbody>
+        </table>
+    </section>
+
+</main>
+
+</body>
+</html>

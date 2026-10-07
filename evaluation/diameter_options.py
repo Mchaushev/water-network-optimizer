@@ -1,5 +1,5 @@
-from network_reader import read_network
-from optimization_config import available_diameters
+from .network_reader import read_network
+from .optimization_config import available_diameters
 
 
 def create_diameter_options(inp_file):

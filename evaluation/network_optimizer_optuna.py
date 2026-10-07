@@ -3,19 +3,21 @@ import csv
 # import os
 
 import optuna
-from pipe_manager import (
+
+from .pipe_manager import (
     set_pipe_diameters,
     save_pipe_configuration
 )
-from network_evaluator import evaluate_network
-from network_reader import read_network
-from diameter_options import create_diameter_options
-from optimization_config import (
+
+from .network_evaluator import evaluate_network
+from .network_reader import read_network
+from .diameter_options import create_diameter_options
+
+from .optimization_config import (
     input_file,
     output_directory,
     criteria
 )
-
 
 
 def calculate_diameter_length_index(
@@ -31,14 +33,67 @@ def calculate_diameter_length_index(
     diameter_length_index = 0.0
 
     for pipe_id, diameter in pipe_diameters.items():
-
         length = pipes[pipe_id]["length"]
 
         diameter_length_index += (
-            diameter * length
+                diameter * length
         )
 
     return diameter_length_index
+
+
+def calculate_constraint_violation(
+        min_pressure,
+        max_pressure,
+        max_velocity,
+        criteria
+):
+    """
+    Calculates the normalized constraint violation.
+
+    Returns:
+        total_violation: sum of normalized violations
+        violations: details for each criterion
+    """
+
+    violations = {}
+
+    # Minimum pressure
+    if min_pressure < criteria["min_pressure"]:
+        violation = (
+                            criteria["min_pressure"] - min_pressure
+                    ) / criteria["min_pressure"]
+    else:
+        violation = 0.0
+
+    violations["min_pressure"] = violation
+
+    # Maximum pressure
+    if max_pressure > criteria["max_pressure"]:
+        violation = (
+                            max_pressure - criteria["max_pressure"]
+                    ) / criteria["max_pressure"]
+    else:
+        violation = 0.0
+
+    violations["max_pressure"] = violation
+
+    # Maximum velocity
+    if max_velocity > criteria["max_velocity"]:
+        violation = (
+                            max_velocity - criteria["max_velocity"]
+                    ) / criteria["max_velocity"]
+    else:
+        violation = 0.0
+
+    violations["max_velocity"] = violation
+
+    total_violation = sum(
+        violations.values()
+    )
+
+    return total_violation, violations
+
 
 def get_top_solutions(study, max_solutions=3):
     """
@@ -50,7 +105,7 @@ def get_top_solutions(study, max_solutions=3):
         trial
         for trial in study.trials
         if trial.value is not None
-        and trial.value != float("inf")
+           and trial.value != float("inf")
     ]
 
     completed_trials.sort(
@@ -80,6 +135,63 @@ def get_top_solutions(study, max_solutions=3):
 
     return unique_solutions
 
+
+def get_closest_infeasible_solution(study):
+    """
+    Returns the infeasible trial with the smallest
+    total normalized constraint violation.
+    """
+
+    infeasible_trials = [
+        trial
+        for trial in study.trials
+        if trial.value == float("inf")
+           and "constraint_violation" in trial.user_attrs
+    ]
+
+    if not infeasible_trials:
+        return None
+
+    return min(
+        infeasible_trials,
+        key=lambda trial: (
+            trial.user_attrs["constraint_violation"],
+            trial.number
+        )
+    )
+
+
+def generate_closest_infeasible_solution(
+        study,
+        inp_file,
+        output_directory
+):
+    """
+    Generates an EPANET .inp file for the closest
+    infeasible solution.
+    """
+
+    closest_trial = get_closest_infeasible_solution(
+        study
+    )
+
+    if closest_trial is None:
+        return None
+
+    output_file = (
+            output_directory
+            + "/closest_infeasible_solution.inp"
+    )
+
+    save_pipe_configuration(
+        inp_file,
+        output_file,
+        closest_trial.params
+    )
+
+    return output_file
+
+
 def create_optuna_csv_report(
         results,
         output_directory
@@ -89,8 +201,8 @@ def create_optuna_csv_report(
     """
 
     output_file = (
-        output_directory
-        + "/optuna_top_3_solutions.csv"
+            output_directory
+            + "/optuna_top_3_solutions.csv"
     )
 
     fieldnames = [
@@ -106,20 +218,21 @@ def create_optuna_csv_report(
         "Pressure Min OK",
         "Pressure Max OK",
         "Velocity OK",
-        "Feasible",
-        "P1",
-        "P2",
-        "P3",
-        "P4",
-        "P5",
-        "P6"
+        "Feasible"
     ]
 
+    # Добавяме динамично колоните за тръбите
+    pipe_ids = list(
+        results[0]["diameters"].keys()
+    )
+
+    fieldnames.extend(pipe_ids)
+
     with open(
-        output_file,
-        "w",
-        newline="",
-        encoding="utf-8-sig"
+            output_file,
+            "w",
+            newline="",
+            encoding="utf-8-sig"
     ) as file:
 
         writer = csv.DictWriter(
@@ -179,7 +292,7 @@ def create_optuna_csv_report(
             }
 
             for pipe_id, diameter in (
-                result["diameters"].items()
+                    result["diameters"].items()
             ):
                 row[pipe_id] = diameter
 
@@ -187,12 +300,12 @@ def create_optuna_csv_report(
 
     return output_file
 
+
 def optimize_network(
         inp_file,
         criteria,
-        n_trials=50000
+        n_trials=5000
 ):
-
     pipes = read_network(inp_file)
 
     diameter_options = create_diameter_options(
@@ -208,7 +321,6 @@ def optimize_network(
         selected_diameters = {}
 
         for pipe_id in pipe_ids:
-
             selected_diameters[pipe_id] = (
                 trial.suggest_categorical(
                     pipe_id,
@@ -249,27 +361,71 @@ def optimize_network(
         d.closeNetwork()
 
         pressure_min_ok = (
-            min_pressure >=
-            criteria["min_pressure"]
+                min_pressure >=
+                criteria["min_pressure"]
         )
 
         pressure_max_ok = (
-            max_pressure <=
-            criteria["max_pressure"]
+                max_pressure <=
+                criteria["max_pressure"]
         )
 
         velocity_ok = (
-            max_velocity <=
-            criteria["max_velocity"]
+                max_velocity <=
+                criteria["max_velocity"]
         )
 
         feasible = (
-            pressure_min_ok
-            and pressure_max_ok
-            and velocity_ok
+                pressure_min_ok
+                and pressure_max_ok
+                and velocity_ok
+        )
+
+        total_violation, violations = (
+            calculate_constraint_violation(
+                min_pressure,
+                max_pressure,
+                max_velocity,
+                criteria
+            )
+        )
+
+        trial.set_user_attr(
+            "min_pressure",
+            min_pressure
+        )
+
+        trial.set_user_attr(
+            "max_pressure",
+            max_pressure
+        )
+
+        trial.set_user_attr(
+            "max_velocity",
+            max_velocity
+        )
+
+        trial.set_user_attr(
+            "constraint_violation",
+            total_violation
+        )
+
+        trial.set_user_attr(
+            "violations",
+            violations
         )
 
         if not feasible:
+            # return float("inf")
+            print(
+                f"INFEASIBLE | "
+                f"Min P={min_pressure:.2f} "
+                f"(required >= {criteria['min_pressure']}, OK={pressure_min_ok}) | "
+                f"Max P={max_pressure:.2f} "
+                f"(required <= {criteria['max_pressure']}, OK={pressure_max_ok}) | "
+                f"Max V={max_velocity:.2f} "
+                f"(required <= {criteria['max_velocity']}, OK={velocity_ok})"
+            )
 
             return float("inf")
 
@@ -294,6 +450,104 @@ def optimize_network(
     return study
 
 
+def generate_top_solutions(
+        study,
+        inp_file,
+        criteria,
+        output_directory
+):
+    """
+    Generates the Top solutions as EPANET .inp files
+    and creates a CSV report.
+    """
+    pipes = read_network(inp_file)
+
+    top_solutions = get_top_solutions(
+        study,
+        max_solutions=3
+    )
+
+    results = []
+
+    for rank, trial in enumerate(
+            top_solutions,
+            start=1
+    ):
+        output_file = (
+                output_directory
+                + f"/optuna_solution_{rank}.inp"
+        )
+
+        save_pipe_configuration(
+            inp_file,
+            output_file,
+            trial.params
+        )
+
+        hydraulic_result = evaluate_network(
+            output_file,
+            criteria
+        )
+
+        results.append({
+            "rank": rank,
+            "trial": trial.number,
+            "dli": trial.value,
+            "diameters": trial.params.copy(),
+            "pipe_lengths": {
+                pipe_id: pipes[pipe_id]["length"]
+                for pipe_id in trial.params
+            },
+
+            "min_pressure": hydraulic_result[
+                "min_pressure"
+            ],
+
+            "min_pressure_node": hydraulic_result[
+                "min_pressure_node"
+            ],
+
+            "max_pressure": hydraulic_result[
+                "max_pressure"
+            ],
+
+            "max_pressure_node": hydraulic_result[
+                "max_pressure_node"
+            ],
+
+            "max_velocity": hydraulic_result[
+                "max_velocity"
+            ],
+
+            "max_velocity_pipe": hydraulic_result[
+                "max_velocity_pipe"
+            ],
+
+            "pressure_min_ok": hydraulic_result[
+                "pressure_min_ok"
+            ],
+
+            "pressure_max_ok": hydraulic_result[
+                "pressure_max_ok"
+            ],
+
+            "velocity_ok": hydraulic_result[
+                "velocity_ok"
+            ],
+
+            "feasible": hydraulic_result[
+                "feasible"
+            ]
+        })
+
+    csv_file = create_optuna_csv_report(
+        results,
+        output_directory
+    )
+
+    return results, csv_file
+
+
 if __name__ == "__main__":
 
     print("\n")
@@ -307,15 +561,10 @@ if __name__ == "__main__":
         n_trials=100
     )
 
-    top_solutions = get_top_solutions(
+    results, csv_file = generate_top_solutions(
         study,
-        max_solutions=3
-    )
-
-    results = []
-
-    csv_file = create_optuna_csv_report(
-        results,
+        input_file,
+        criteria,
         output_directory
     )
 
@@ -324,147 +573,72 @@ if __name__ == "__main__":
     print("TOP 3 SOLUTIONS")
     print("=" * 80)
 
-
-
-    for rank, trial in enumerate(
-            top_solutions,
-            start=1
-    ):
+    for result in results:
 
         print("\n" + "-" * 80)
 
         print(
-            f"SOLUTION #{rank}"
+            f"SOLUTION #{result['rank']}"
         )
 
         print(
-            f"DLI: {trial.value:.0f}"
+            f"DLI: {result['dli']:.0f}"
         )
 
         print(
-            f"Trial: {trial.number}"
+            f"Trial: {result['trial']}"
         )
 
         print("\n--- PIPE DIAMETERS ---")
 
         for pipe_id, diameter in (
-                trial.params.items()
+                result["diameters"].items()
         ):
             print(
                 f"{pipe_id}: DN{diameter}"
             )
 
-        # Generate EPANET input file
-        output_file = (
-                output_directory
-                + f"/optuna_solution_{rank}.inp"
-        )
-
-        save_pipe_configuration(
-            input_file,
-            output_file,
-            trial.params
-        )
-
-        # Hydraulic evaluation
-        hydraulic_result = evaluate_network(
-            output_file,
-            criteria
-        )
-        # temp_file = output_file.replace(
-        #     ".inp",
-        #     "_temp.inp"
-        # )
-        #
-        # if os.path.exists(temp_file):
-        #     os.remove(temp_file)
-
         print("\n--- HYDRAULIC RESULTS ---")
 
         print(
             f"Minimum pressure: "
-            f"{hydraulic_result['min_pressure']:.3f} m "
-            f"({hydraulic_result['min_pressure_node']})"
+            f"{result['min_pressure']:.3f} m "
+            f"({result['min_pressure_node']})"
         )
 
         print(
             f"Maximum pressure: "
-            f"{hydraulic_result['max_pressure']:.3f} m "
-            f"({hydraulic_result['max_pressure_node']})"
+            f"{result['max_pressure']:.3f} m "
+            f"({result['max_pressure_node']})"
         )
 
         print(
             f"Maximum velocity: "
-            f"{hydraulic_result['max_velocity']:.3f} m/s "
-            f"({hydraulic_result['max_velocity_pipe']})"
+            f"{result['max_velocity']:.3f} m/s "
+            f"({result['max_velocity_pipe']})"
         )
 
         print("\n--- CRITERIA CHECK ---")
 
         print(
             f"Minimum pressure OK: "
-            f"{hydraulic_result['pressure_min_ok']}"
+            f"{result['pressure_min_ok']}"
         )
 
         print(
             f"Maximum pressure OK: "
-            f"{hydraulic_result['pressure_max_ok']}"
+            f"{result['pressure_max_ok']}"
         )
 
         print(
             f"Maximum velocity OK: "
-            f"{hydraulic_result['velocity_ok']}"
+            f"{result['velocity_ok']}"
         )
 
         print(
             f"FEASIBLE: "
-            f"{hydraulic_result['feasible']}"
+            f"{result['feasible']}"
         )
-
-        print("\nOutput file:")
-        print(output_file)
-
-        # Store results for CSV
-        results.append({
-            "rank": rank,
-            "trial": trial.number,
-            "dli": trial.value,
-            "diameters": trial.params.copy(),
-            "min_pressure": hydraulic_result[
-                "min_pressure"
-            ],
-            "min_pressure_node": hydraulic_result[
-                "min_pressure_node"
-            ],
-            "max_pressure": hydraulic_result[
-                "max_pressure"
-            ],
-            "max_pressure_node": hydraulic_result[
-                "max_pressure_node"
-            ],
-            "max_velocity": hydraulic_result[
-                "max_velocity"
-            ],
-            "max_velocity_pipe": hydraulic_result[
-                "max_velocity_pipe"
-            ],
-            "pressure_min_ok": hydraulic_result[
-                "pressure_min_ok"
-            ],
-            "pressure_max_ok": hydraulic_result[
-                "pressure_max_ok"
-            ],
-            "velocity_ok": hydraulic_result[
-                "velocity_ok"
-            ],
-            "feasible": hydraulic_result[
-                "feasible"
-            ]
-        })
-    csv_file = create_optuna_csv_report(
-        results,
-        output_directory
-    )
 
     print("\n--- CSV REPORT ---")
     print(

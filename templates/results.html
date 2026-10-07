@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimization Results</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+
+<!-- Реползваем макрос за редове с метрики -->
+{% macro metric_row(label, value, unit='', detail='') %}
+<div class="metric-row">
+    <span>{{ label }}</span>
+    <strong>
+        {{ value }} {{ unit }}
+        {% if detail %}<small>({{ detail }})</small>{% endif %}
+    </strong>
+</div>
+{% endmacro %}
+
+<!-- Реползваем макрос за проверки на критерии -->
+{% macro criteria_row(label, is_ok) %}
+<div class="metric-row">
+    <span>{{ label }}</span>
+    <strong class="{{ 'status-ok' if is_ok else 'status-failed' }}">
+        {{ "✓ OK" if is_ok else "✗ Failed" }}
+    </strong>
+</div>
+{% endmacro %}
+
+<header class="header">
+    <div class="container header-content">
+        <div>
+            <h1>Optimization Results</h1>
+            <p>EPANET + Optuna</p>
+        </div>
+    </div>
+</header>
+
+<main class="container">
+
+    <!-- ========================= -->
+    <!-- OPTIMIZATION SUMMARY -->
+    <!-- ========================= -->
+    <section class="summary-card">
+        <div class="section-title">
+            <span class="section-icon" aria-hidden="true">📊</span>
+            <h2>Optimization Summary</h2>
+        </div>
+        <div class="summary-grid">
+            <div class="summary-item">
+                <span class="summary-label">Trials</span>
+                <strong>{{ trials }}</strong>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Solutions found</span>
+                <strong>{{ results|length }}</strong>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================= -->
+    <!-- SOLUTIONS -->
+    <!-- ========================= -->
+    {% for result in results %}
+    <article class="solution-card {{ 'best-solution' if result.rank == 1 }}">
+
+        <!-- Solution Header -->
+        <header class="solution-header">
+            <div class="solution-title">
+                <span class="rank-icon" aria-hidden="true">
+                    {% if result.rank == 1 %}🏆
+                    {% elif result.rank == 2 %}🥈
+                    {% else %}🥉{% endif %}
+                </span>
+                <h2>Solution #{{ result.rank }}</h2>
+                {% if result.rank == 1 %}
+                    <span class="best-badge">Best Solution</span>
+                {% endif %}
+            </div>
+            <span class="rank-badge">Rank #{{ result.rank }}</span>
+        </header>
+
+        <!-- Solution Content -->
+        <div class="solution-grid">
+
+            <!-- Optimization Panel -->
+            <section class="result-panel">
+                <div class="panel-title">
+                    <span aria-hidden="true">🎯</span>
+                    <h3>Optimization</h3>
+                </div>
+                {{ metric_row('DLI', "%.0f"|format(result.dli)) }}
+                {{ metric_row('Optuna trial', result.trial) }}
+            </section>
+
+            <!-- Hydraulic Results Panel -->
+            <section class="result-panel">
+                <div class="panel-title">
+                    <span aria-hidden="true">💧</span>
+                    <h3>Hydraulic Results</h3>
+                </div>
+                {{ metric_row('Minimum pressure', "%.2f"|format(result.min_pressure), 'm', result.min_pressure_node) }}
+                {{ metric_row('Maximum pressure', "%.2f"|format(result.max_pressure), 'm', result.max_pressure_node) }}
+                {{ metric_row('Maximum velocity', "%.2f"|format(result.max_velocity), 'm/s', result.max_velocity_pipe) }}
+            </section>
+
+            <!-- Criteria Check Panel -->
+            <section class="result-panel">
+                <div class="panel-title">
+                    <span aria-hidden="true">🛡</span>
+                    <h3>Criteria Check</h3>
+                </div>
+                {{ criteria_row('Minimum pressure', result.pressure_min_ok) }}
+                {{ criteria_row('Maximum pressure', result.pressure_max_ok) }}
+                {{ criteria_row('Maximum velocity', result.velocity_ok) }}
+
+                <div class="overall-row">
+                    <span>Overall</span>
+                    <span class="{{ 'feasible-badge' if result.feasible else 'failed-badge' }}">
+                        {{ "FEASIBLE" if result.feasible else "NOT FEASIBLE" }}
+                    </span>
+                </div>
+            </section>
+
+            <!-- Pipe Configuration Panel -->
+            <section class="result-panel pipe-panel">
+                <div class="panel-title">
+                    <span aria-hidden="true">🔗</span>
+                    <h3>Pipe Configuration</h3>
+                </div>
+                <table class="pipe-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Pipe</th>
+                            <th scope="col">Length (m)</th>
+                            <th scope="col">Diameter</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pipe_id, diameter in result.diameters.items() %}
+                        <tr>
+                            <td>{{ pipe_id }}</td>
+                            <td>{{ "%.2f"|format(result.pipe_lengths[pipe_id]) }}</td>
+                            <td><strong>DN{{ diameter }}</strong></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </section>
+
+        </div>
+    </article>
+    {% endfor %}
+
+    <!-- ========================= -->
+    <!-- CSV REPORT -->
+    <!-- ========================= -->
+    <section class="report-card">
+        <div class="section-title">
+            <span class="section-icon" aria-hidden="true">📄</span>
+            <h2>CSV Report</h2>
+        </div>
+        <div class="report-row">
+            <span>Report file:</span>
+            <strong>{{ csv_file }}</strong>
+              <a href="{{ url_for('download_csv') }}" class="primary-button">
+            Download CSV Report
+        </a>
+        </div>
+    </section>
+
+    <!-- ========================= -->
+    <!-- BACK BUTTON -->
+    <!-- ========================= -->
+        <a href="/" class="primary-button">← Back to Network</a>
+
+    {% if closest_file %}
+    <a
+        href="{{ url_for('download_closest_infeasible') }}"
+        class="download-button"
+    >
+        Изтегли най-близкото решение (.inp)
+    </a>
+{% endif %}
+
+
+</main>
+
+</body>
+</html>

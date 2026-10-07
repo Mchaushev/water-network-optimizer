@@ -1,9 +1,24 @@
 # Hydraulic criteria
 
-input_file = "../networks/test_network.inp"
+import os
 
-output_directory = "../networks/optimized"
+BASE_DIR = os.path.dirname(
+    os.path.dirname(
+        os.path.abspath(__file__)
+    )
+)
 
+input_file = os.path.join(
+    BASE_DIR,
+    "networks",
+    "test_network.inp"
+)
+
+output_directory = os.path.join(
+    BASE_DIR,
+    "networks",
+    "optimized"
+)
 criteria = {
     "min_pressure": 20.0,
     "max_pressure": 60.0,
