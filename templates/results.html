@@ -153,25 +153,153 @@
             </section>
 
         </div>
+             <div class="solution-actions">
+            <a
+                href="{{ url_for('download_solution', rank=result.rank) }}"
+                class="primary-button"
+            >
+                Download Solution #{{ result.rank }}
+            </a>
+        </div>
     </article>
     {% endfor %}
 
     <!-- ========================= -->
     <!-- CSV REPORT -->
     <!-- ========================= -->
-    <section class="report-card">
-        <div class="section-title">
-            <span class="section-icon" aria-hidden="true">📄</span>
-            <h2>CSV Report</h2>
-        </div>
-        <div class="report-row">
-            <span>Report file:</span>
-            <strong>{{ csv_file }}</strong>
-              <a href="{{ url_for('download_csv') }}" class="primary-button">
+{% if csv_file %}
+<section class="report-card">
+    <div class="section-title">
+        <span class="section-icon" aria-hidden="true">📄</span>
+        <h2>CSV Report</h2>
+    </div>
+
+    <div class="report-row">
+        <span>Report file:</span>
+        <strong>{{ csv_file }}</strong>
+
+        <a href="{{ url_for('download_csv') }}" class="primary-button">
             Download CSV Report
         </a>
+    </div>
+</section>
+{% endif %}
+
+    <!-- ========================= -->
+    <!-- Closest Infeasible Solution REPORT -->
+    <!-- ========================= -->
+
+    {% if closest_report %}
+<section class="summary-card">
+
+    <div class="section-title">
+        <span class="section-icon" aria-hidden="true">⚠️</span>
+        <h2>Closest Infeasible Solution</h2>
+    </div>
+
+    <div class="summary-grid">
+
+        <div class="summary-item">
+            <span class="summary-label">Optuna trial</span>
+            <strong>{{ closest_report.trial }}</strong>
         </div>
-    </section>
+
+        <div class="summary-item">
+            <span class="summary-label">Constraint violation</span>
+            <strong>
+                {{ "%.4f"|format(closest_report.constraint_violation) }}
+            </strong>
+        </div>
+
+    </div>
+
+</section>
+
+
+<section class="summary-card">
+
+    <div class="section-title">
+        <span class="section-icon" aria-hidden="true">💧</span>
+        <h2>Hydraulic Results</h2>
+    </div>
+
+    {{ metric_row(
+        'Minimum pressure',
+        "%.2f"|format(closest_report.min_pressure),
+        'm'
+    ) }}
+
+    {{ metric_row(
+        'Maximum pressure',
+        "%.2f"|format(closest_report.max_pressure),
+        'm'
+    ) }}
+
+    {{ metric_row(
+        'Maximum velocity',
+        "%.2f"|format(closest_report.max_velocity),
+        'm/s'
+    ) }}
+
+</section>
+
+
+<section class="summary-card">
+
+    <div class="section-title">
+        <span class="section-icon" aria-hidden="true">🛡</span>
+        <h2>Criteria Check</h2>
+    </div>
+
+    {{ criteria_row(
+        'Minimum pressure',
+        closest_report.pressure_min_ok
+    ) }}
+
+    <div class="metric-row">
+        <span>Required minimum pressure</span>
+        <strong>
+            {{ "%.2f"|format(criteria.min_pressure) }} m
+        </strong>
+    </div>
+
+
+    {{ criteria_row(
+        'Maximum pressure',
+        closest_report.pressure_max_ok
+    ) }}
+
+    <div class="metric-row">
+        <span>Required maximum pressure</span>
+        <strong>
+            {{ "%.2f"|format(criteria.max_pressure) }} m
+        </strong>
+    </div>
+
+
+    {{ criteria_row(
+        'Maximum velocity',
+        closest_report.velocity_ok
+    ) }}
+
+    <div class="metric-row">
+        <span>Required maximum velocity</span>
+        <strong>
+            {{ "%.2f"|format(criteria.max_velocity) }} m/s
+        </strong>
+    </div>
+
+
+    <div class="overall-row">
+        <span>Overall</span>
+        <span class="failed-badge">
+            NOT FEASIBLE
+        </span>
+    </div>
+
+</section>
+{% endif %}
+
 
     <!-- ========================= -->
     <!-- BACK BUTTON -->
