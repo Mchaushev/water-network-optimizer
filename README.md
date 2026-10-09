@@ -179,7 +179,7 @@ Future versions will continue to extend the application's functionality, usabili
 
 Author
 
-Mikhail Chaushev
+Mihail Chaushev
 
 Water Infrastructure Engineer with experience in:
 
